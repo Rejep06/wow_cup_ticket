@@ -1,0 +1,10 @@
+# Do not add credentials, persistent browser profiles or diagnostics to the image.
+.env
+.env.*
+!.env.example
+data/
+**/__pycache__/
+**/*.pyc
+.git/
+*.zip
+.DS_Store

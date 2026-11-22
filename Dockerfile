@@ -1,8 +1,26 @@
-FROM python:3.12-slim
+# Playwright version must match requirements.txt (1.57.0).
+FROM mcr.microsoft.com/playwright/python:v1.57.0-noble
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    DISPLAY=:99 \
+    HOME=/home/runner \
+    XAUTHORITY=/home/runner/.Xauthority \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb xauth x11-utils x11vnc fluxbox xterm novnc websockify \
+    openssl fonts-dejavu-core fonts-liberation ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --uid 10001 --create-home --shell /bin/bash runner && \
+    mkdir -p /app /home/runner/.vnc && \
+    chown -R runner:runner /app /home/runner
+
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY watcher.py .
-RUN mkdir -p /app/data
-CMD ["python", "watcher.py"]
+COPY requirements.txt /app/requirements.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements.txt
+COPY --chown=runner:runner . /app/
+RUN chmod +x /app/server/entrypoint.sh /app/server/console.sh
+USER runner
+EXPOSE 6080
+ENTRYPOINT ["/app/server/entrypoint.sh"]

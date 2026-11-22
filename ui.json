@@ -1,0 +1,17 @@
+{
+  "summary_selectors": [
+    "[data-test-id=\"orderItemsList.root\"]",
+    "[data-component=\"OrderItemsList\"]",
+    "[data-test-id=\"orderSummary.root\"]",
+    "[data-testid=\"cart-summary\"]",
+    "#order-summary"
+  ],
+  "total_selector": "",
+  "name_selector": "input[name=\"fullName\"], input[name=\"userFullName\"], input[name=\"fullname\"], input[autocomplete=\"name\"]",
+  "email_selector": "input[type=\"email\"], input[name=\"email\"]",
+  "phone_selector": "input[type=\"tel\"], input[name=\"phone\"]",
+  "sbp_option_selector": "input[type=\"radio\"][value=\"new-sbp-token\"]",
+  "payment_ready_selector": "",
+  "required_consent_selectors": [],
+  "safe_button_labels": ["Далее", "Продолжить", "Оформить заказ", "Подтвердить заказ", "Забронировать", "Перейти к оплате"]
+}
