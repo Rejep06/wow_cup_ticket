@@ -44,6 +44,7 @@ class Config:
     auto_booking: bool
     auto_sbp: bool
     quantity: int
+    min_quantity: int
     max_price: int
     max_total: int
     adjacent: bool
@@ -64,6 +65,9 @@ class Config:
         quantity = int(os.getenv('BOOKING_SEATS', '1'))
         if quantity not in (1, 2):
             raise ValueError('BOOKING_SEATS: 1 или 2; лимит сеанса проверяется отдельно.')
+        min_quantity = int(os.getenv('BOOKING_MIN_SEATS', str(quantity)))
+        if min_quantity not in (1, 2) or min_quantity > quantity:
+            raise ValueError('BOOKING_MIN_SEATS: 1 <= минимум <= BOOKING_SEATS <= 2.')
         jitter = number('POLL_JITTER_FRACTION', .1, 0)
         if jitter > .5:
             raise ValueError('POLL_JITTER_FRACTION: от 0 до 0.5.')
@@ -75,7 +79,7 @@ class Config:
                    int(os.getenv('EXPECTED_EVENT_ID', '908192')), date,
                    number('CHECK_INTERVAL_SECONDS', 10, 10), jitter,
                    flag('BOOKING_HEADLESS'), flag('AUTO_BOOKING'), flag('AUTO_START_SBP'),
-                   quantity, rub_to_minor(raw_price) if raw_price else 0,
+                   quantity, min_quantity, rub_to_minor(raw_price) if raw_price else 0,
                    rub_to_minor(raw_total) if raw_total else 0, flag('BOOKING_ADJACENT', True),
                    tuple(x.strip() for x in os.getenv('BOOKING_SECTORS', '').split(',') if x.strip()),
                    {'name': os.getenv('BUYER_FULL_NAME', '').strip(),

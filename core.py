@@ -254,30 +254,66 @@ def extract_seats(plan: dict) -> list[Seat]:
 
 def choose_seats(seats: list[Seat], quantity: int, per_ticket: int, total_limit: int,
                  max_allowed: int = 2, sectors: tuple[str, ...] = (), adjacent: bool = True,
-                 max_gap: float = 35) -> list[Seat]:
-    if quantity not in (1, 2) or quantity > max_allowed:
+                 max_gap: float = 35, min_quantity: int | None = None) -> list[Seat]:
+    """Select as MANY as possible, then the least expensive set.
+
+    quantity is the maximum. When min_quantity is omitted, preserve the older
+    exact-quantity behavior (used by previous clients and tests). Set
+    min_quantity=1 to prefer two affordable tickets but fall back to one.
+
+    Different sectors/rows are permitted for adjacent=False, but all seats in
+    a single order must share the same supplier/session. Without that guard we
+    could create an invalid mixed-provider order (allowCompositeOrders=false).
+    No API mutations take place here.
+    """
+    if min_quantity is None:
+        min_quantity = quantity
+    if (type(quantity) is not int or type(min_quantity) is not int or
+            quantity not in (1, 2) or not 1 <= min_quantity <= quantity or
+            type(max_allowed) is not int or max_allowed < min_quantity or
+            per_ticket <= 0 or total_limit <= 0):
         return []
-    pool = [s for s in seats if s.total <= per_ticket and
-            (not sectors or s.level.casefold() in {x.casefold() for x in sectors})]
-    pool.sort(key=lambda s: (s.total, s.level, s.row, s.place))
-    if quantity == 1:
-        return [pool[0]] if pool and pool[0].total <= total_limit else []
-    pairs = []
-    for i, a in enumerate(pool):
-        for b in pool[i + 1:]:
-            if (a.service_id, a.gateway_id, a.ext_session_id) != (b.service_id, b.gateway_id, b.ext_session_id):
-                continue
-            if a.total + b.total > total_limit:
-                continue
-            if adjacent:
-                if a.level_id != b.level_id or a.row != b.row:
-                    continue
-                if not a.place.isdecimal() or not b.place.isdecimal() or abs(int(a.place) - int(b.place)) != 1:
-                    continue
-                if a.x is None or b.x is None or math.hypot(a.x - b.x, a.y - b.y) > max_gap:
-                    continue  # Avoid seats across an aisle.
-            pairs.append([a, b])
-    return min(pairs, key=lambda p: sum(s.total for s in p), default=[])
+    effective_max = min(quantity, max_allowed)
+    normalized_sectors = {name.casefold() for name in sectors}
+    pool = [s for s in seats if s.total > 0 and s.total <= per_ticket and
+            (not normalized_sectors or s.level.casefold() in normalized_sectors)]
+    pool.sort(key=lambda s: (s.total, s.level, s.row, s.place, s.identity))
+    if not pool:
+        return []
+
+    if effective_max == 2:
+        # Group and sort once. Non-adjacent selection runs in O(n log n)
+        # instead of checking every possible pair across a large hallplan.
+        groups: dict[tuple[str, str, int], list[Seat]] = {}
+        for s in pool:
+            groups.setdefault((s.service_id, s.gateway_id, s.ext_session_id), []).append(s)
+        candidates: list[list[Seat]] = []
+        if not adjacent:
+            for group in groups.values():
+                if len(group) >= 2 and group[0].total + group[1].total <= total_limit:
+                    candidates.append(group[:2])
+        else:
+            for group in groups.values():
+                by_row: dict[tuple[int, str], dict[int, list[Seat]]] = {}
+                for seat in group:
+                    if seat.place.isdecimal() and seat.x is not None and seat.y is not None:
+                        by_row.setdefault((seat.level_id, seat.row), {}).setdefault(int(seat.place), []).append(seat)
+                for indexed in by_row.values():
+                    for place, left_seats in indexed.items():
+                        for left in left_seats:
+                            for right in indexed.get(place + 1, []):
+                                if left.identity != right.identity and left.total + right.total <= total_limit and \
+                                        math.hypot(left.x - right.x, left.y - right.y) <= max_gap:
+                                    candidates.append([left, right])
+        if candidates:
+            return min(candidates, key=lambda pair: (sum(s.total for s in pair),
+                                                    tuple(s.identity for s in pair)))
+
+    # The owner requested up to two seats: if no affordable, compatible pair
+    # exists, accept exactly one seat (but never if min_quantity == 2).
+    if min_quantity == 1 and pool[0].total <= total_limit:
+        return [pool[0]]
+    return []
 
 
 def retry_after_seconds(value: str | None, now: float | None = None) -> float:

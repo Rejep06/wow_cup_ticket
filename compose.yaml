@@ -2,7 +2,7 @@ name: wowcup-tickets
 services:
   wowcup:
     build: .
-    image: wowcup-checkout-v6-novnc:local
+    image: wowcup-checkout-v6p1-novnc:local
     container_name: wowcup-checkout
     restart: unless-stopped
     init: true

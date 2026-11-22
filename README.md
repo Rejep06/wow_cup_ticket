@@ -1,3 +1,5 @@
+> Обновление v6.1: `BOOKING_MIN_SEATS=1` позволяет оформить **один** билет, когда `BOOKING_SEATS=2`, но пара недоступна. Для VPS и лимита 100 000 ₽ см. `README_100K.md`.
+
 > **VPS / noVNC:** см. [README_SERVER.md](README_SERVER.md) для готовой Docker-сборки, защищённого удалённого рабочего стола и ручной CAPTCHA/оплаты.
 
 # WOW CUP Checkout Assistant v6 — экспериментальная версия

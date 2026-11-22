@@ -81,7 +81,9 @@ async def watch(context, page, cfg, state, observer, ui, notify):
     cfg.validate_automation()
     notify.enqueue('started-' + str(time.time_ns()),
         f'Мониторинг запущен. Интервал не меньше {cfg.interval:g} с. '
-        f'Автооформление: {cfg.auto_booking}. Оплату подтверждает человек.')
+        f'Цель: от {cfg.min_quantity} до {cfg.quantity} мест; '
+        f'лимит заказа {cfg.max_total / 100:,.2f} RUB; '
+        f'автооформление: {cfg.auto_booking}. Оплату подтверждает человек.')
     last_fingerprint = None
     warmed = False
     while not page.is_closed():
@@ -126,7 +128,7 @@ async def watch(context, page, cfg, state, observer, ui, notify):
                 total_price = cfg.max_total or 10**15
                 candidate = choose_seats(seats, cfg.quantity, per_price, total_price,
                     min(session['maxTicketsCount'], int(plan.get('maxTicketsCount', session['maxTicketsCount']))),
-                    cfg.sectors, cfg.adjacent)
+                    cfg.sectors, cfg.adjacent, min_quantity=cfg.min_quantity)
                 if candidate:
                     fingerprint = '|'.join(s.identity for s in candidate)
                     if cfg.auto_booking:
